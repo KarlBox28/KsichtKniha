@@ -1,0 +1,17 @@
+{
+  "name": "ksichtkniha_server",
+  "version": "1.0.0",
+  "description": "",
+  "license": "MIT",
+  "author": "Karel Zámostný",
+  "type": "module",
+  "main": "server.mjs",
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "nodemon": "^3.1.14"
+  },
+  "scripts": {
+    "dev": "nodemon server.mjs --env-file=.env"
+  }
+}
