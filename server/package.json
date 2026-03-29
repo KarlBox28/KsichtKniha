@@ -9,9 +9,12 @@
   "dependencies": {
     "cors": "^2.8.6",
     "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "multer": "^2.1.1",
+    "mysql2": "^3.20.0",
     "nodemon": "^3.1.14"
   },
   "scripts": {
-    "dev": "nodemon server.mjs --env-file=.env"
+    "dev": "nodemon --env-file=./.env server.mjs "
   }
 }

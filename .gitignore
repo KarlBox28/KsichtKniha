@@ -144,4 +144,4 @@ vite.config.ts.timestamp-*
 .vite/
 
 # Custom
-static/uploads/*
+server/static/uploads/*
