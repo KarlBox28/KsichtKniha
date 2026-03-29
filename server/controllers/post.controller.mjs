@@ -64,3 +64,25 @@ export async function getAllPosts(req, res) {
     let [posts] = await db.query("SELECT title, body, username as Author, image, posts.created_at FROM posts INNER JOIN users ON posts.user_id = users.id");
     res.status(200).send(posts);
 }
+
+export async function likePost(req, res) {
+    try {
+        let userId = req.user.id;
+        let { postId } = req.body;
+        const db = await getPool();
+
+        let [likes] = await db.query("SELECT COUNT(post_id) as count FROM likes WHERE post_id = ? AND user_id = ?", [postId, userId]);
+
+        if(likes[0].count === 0) {
+            //nema liknuto a chce liknout
+            await db.query("INSERT INTO likes(user_id, post_id) VALUES (?, ?)", [userId, postId])
+            res.status(200).send();
+        } else {
+            //odebrat like
+            await db.query("DELETE FROM likes WHERE post_id = ? AND user_id = ?", [postId, userId]);
+            res.status(200).send();
+        }
+    } catch (error) {
+        res.status(400).send({error: error.message});
+    }
+}

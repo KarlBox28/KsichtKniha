@@ -25,13 +25,14 @@ app.use(express.json());
 app.post("/api/login", AuthController.login);
 app.post("/api/register", AuthController.register);
 app.post("/api/upload-avatar", jwtAuthMiddleware, upload.single('profile-image'), ImageController.uploadAvatar);
-app.get("/api/user-info", jwtAuthMiddleware, UserController.userInfo);
+app.get("/api/user-info", UserController.userInfo);
 app.post("/api/user-info", jwtAuthMiddleware, UserController.editUserInfo);
 app.post("/api/post", jwtAuthMiddleware, PostController.newPost);
 app.delete("/api/post/:id", jwtAuthMiddleware, PostController.deletePost);
 app.put("/api/post/:id", jwtAuthMiddleware, PostController.updatePost);
 app.post("/api/post-image/:id", jwtAuthMiddleware, upload.single('post-image'), ImageController.uploadPostImage);
 app.get("/api/posts", PostController.getAllPosts);
+app.post("/api/like-post", jwtAuthMiddleware, PostController.likePost);
 
 
 

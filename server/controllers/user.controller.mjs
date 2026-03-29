@@ -14,7 +14,7 @@ export async function editUserInfo(req, res) {
 }
 
 export async function userInfo(req, res) {
-    let userId = req.user.id;
+    let userId = req.params.id;
     const db = await getPool();
 
     let [rows] = await db.query("SELECT id, username, first_name, last_name, age, sex, profile_image FROM users WHERE id = ?", [userId]);
