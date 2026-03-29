@@ -1,5 +1,6 @@
 import getPool from "../db/db.mjs";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 
 export async function login(req, res) {
         const db = await getPool();
@@ -26,13 +27,13 @@ export async function login(req, res) {
             res.status(403).send();
         }
 
-        const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, process.env.JWT_SECRET, {expiresIn: "1h"});
+        const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, process.env.APP_JWT_SECRET, {expiresIn: "1h"});
         res.status(200).send(token);
 }
 
 export async function register(req, res) {
         const db = await getPool();
-        const { username, password, first_name, last_name, age, sex, profile_image } = req.body;
+        const { username, password, first_name, last_name, age, sex } = req.body;
 
         const password_salt = crypto.randomBytes(16).toString("hex");
         const password_hash = crypto.pbkdf2Sync(
@@ -43,7 +44,7 @@ export async function register(req, res) {
             'sha512'
         );
 
-        let [result] = db.query('INSERT INTO users(username, password_hash, password_salt, first_name, last_name, age, sex) VALUES (?, ?, ?, ?, ?, ?, ?)',[username, password_hash, password_salt, first_name, last_name, age, sex]);
-        const token = jwt.sign({ id: result.insertId, username: username, role: "user" }, process.env.JWT_SECRET, {expiresIn: "1h"});
+        let [result] = await db.query('INSERT INTO users(username, password_hash, password_salt, first_name, last_name, age, sex) VALUES (?, ?, ?, ?, ?, ?, ?)',[username, password_hash, password_salt, first_name, last_name, age, sex]);
+        const token = jwt.sign({ id: result.insertId, username: username, role: "user" }, process.env.APP_JWT_SECRET, {expiresIn: "1h"});
         res.status(200).send(token);
 }

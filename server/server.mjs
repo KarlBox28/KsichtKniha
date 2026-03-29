@@ -9,20 +9,24 @@ import jwtAuthMiddleware from "./middlewares/authentication.middleware.mjs";
 import * as AuthController from "./controllers/auth.controller.mjs";
 import * as ImageController from "./controllers/image.controller.mjs";
 import {upload} from "./middlewares/image.middleware.mjs";
+import * as UserController from "./controllers/user.controller.mjs";
+import {userInfo} from "./controllers/user.controller.mjs";
 
 ensureJwtSecret();
 getPool();
 
 const app = express();
 const port = process.env.APP_PORT || 3000;
-app.use('api/static', express.static('static'));
+app.use('/api/static', express.static('static'));
 
 app.use(cors());
 app.use(express.json());
 
-app.post("api/login", AuthController.login);
-app.post("api/register", AuthController.register);
-app.post("api/upload-avatar", jwtAuthMiddleware, upload.single('profile-image'), ImageController.uploadAvatar);
+app.post("/api/login", AuthController.login);
+app.post("/api/register", AuthController.register);
+app.post("/api/upload-avatar", jwtAuthMiddleware, upload.single('profile-image'), ImageController.uploadAvatar);
+app.get("/api/user-info", jwtAuthMiddleware, UserController.userInfo);
+app.post("/api/user-info", jwtAuthMiddleware, UserController.editUserInfo);
 
 
 

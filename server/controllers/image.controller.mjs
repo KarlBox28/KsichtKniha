@@ -11,18 +11,12 @@ export async function uploadAvatar(req, res) {
         // Aktualizace uživatele v DB
         await db.query('UPDATE users SET profile_image = ? WHERE id = ?', [profile_image, userId]);
 
-        res.status(200).json({ message: 'Profilový obrázek aktualizován.', profile_image_url: `/uploads/${profile_image}` });
+        res.status(200).json({ message: 'Profilový obrázek aktualizován.', profile_image_url: `/api/static/uploads/${profile_image}` });
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: err.message });
     }
 }
 export async function uploadPostImage(req, res) {
-
-}
-export async function getAvatar(req, res) {
-
-}
-export async function getPostImage(req, res) {
 
 }
