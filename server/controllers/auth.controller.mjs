@@ -28,12 +28,16 @@ export async function login(req, res) {
         }
 
         const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, process.env.APP_JWT_SECRET, {expiresIn: "1h"});
-        res.status(200).send(token);
+        res.status(200).send({"token": token});
 }
 
 export async function register(req, res) {
         const db = await getPool();
         const { username, password, first_name, last_name, age, sex } = req.body;
+
+        if(age < 13) {
+                res.status(400).json({message: "Minimal age needed for registration is 13"});
+        }
 
         const password_salt = crypto.randomBytes(16).toString("hex");
         const password_hash = crypto.pbkdf2Sync(
@@ -46,5 +50,5 @@ export async function register(req, res) {
 
         let [result] = await db.query('INSERT INTO users(username, password_hash, password_salt, first_name, last_name, age, sex) VALUES (?, ?, ?, ?, ?, ?, ?)',[username, password_hash, password_salt, first_name, last_name, age, sex]);
         const token = jwt.sign({ id: result.insertId, username: username, role: "user" }, process.env.APP_JWT_SECRET, {expiresIn: "1h"});
-        res.status(200).send(token);
+        res.status(200).send({"token": token});
 }

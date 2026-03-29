@@ -10,7 +10,7 @@ import * as AuthController from "./controllers/auth.controller.mjs";
 import * as ImageController from "./controllers/image.controller.mjs";
 import {upload} from "./middlewares/image.middleware.mjs";
 import * as UserController from "./controllers/user.controller.mjs";
-import {userInfo} from "./controllers/user.controller.mjs";
+import * as PostController from "./controllers/post.controller.mjs";
 
 ensureJwtSecret();
 getPool();
@@ -27,6 +27,11 @@ app.post("/api/register", AuthController.register);
 app.post("/api/upload-avatar", jwtAuthMiddleware, upload.single('profile-image'), ImageController.uploadAvatar);
 app.get("/api/user-info", jwtAuthMiddleware, UserController.userInfo);
 app.post("/api/user-info", jwtAuthMiddleware, UserController.editUserInfo);
+app.post("/api/post", jwtAuthMiddleware, PostController.newPost);
+app.delete("/api/post/:id", jwtAuthMiddleware, PostController.deletePost);
+app.put("/api/post/:id", jwtAuthMiddleware, PostController.updatePost);
+app.post("/api/post-image/:id", jwtAuthMiddleware, upload.single('post-image'), ImageController.uploadPostImage);
+app.get("/api/posts", PostController.getAllPosts);
 
 
 
