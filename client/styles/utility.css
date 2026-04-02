@@ -1,0 +1,39 @@
+.flex {
+    display: flex;
+}
+.flex-row {
+    flex-direction: row;
+}
+.flex-column {
+    flex-direction: column;
+}
+.flex-center {
+    justify-content: center;
+    align-items: center;
+}
+.justify-start {
+    justify-content: flex-start;
+}
+.justify-end {
+    justify-content: flex-end;
+}
+.align-center {
+    align-items: center;
+}
+.align-end {
+    align-items: flex-end;
+}
+.gap-10 {
+    gap: 10px;
+}
+.btn-primary {
+    height: 50px;
+    background-color: var(--color-primary);
+    color: white;
+    border: none;
+    font-size: 16px;
+    cursor: pointer;
+}
+.hidden {
+    display: none;
+}
