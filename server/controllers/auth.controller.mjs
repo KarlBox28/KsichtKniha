@@ -27,7 +27,7 @@ export async function login(req, res) {
             res.status(403).send();
         }
 
-        const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, process.env.APP_JWT_SECRET, {expiresIn: "1h"});
+        const token = jwt.sign({ id: user.user_id, username: user.username, role: user.role }, process.env.APP_JWT_SECRET, {expiresIn: "1h"});
         res.status(200).send({"token": token});
 }
 

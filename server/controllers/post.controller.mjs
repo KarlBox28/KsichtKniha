@@ -61,15 +61,17 @@ export async function updatePost(req, res) {
 export async function getAllPosts(req, res) {
     const db = await getPool();
 
-    let [posts] = await db.query("SELECT title, body, username as Author, image, posts.created_at FROM posts INNER JOIN users ON posts.user_id = users.id");
+    let [posts] = await db.query("SELECT p.post_id, p.title, p.body, p.user_id AS author_id, u.first_name, u.last_name, u.profile_image AS user_image, p.image, p.created_at, COUNT(l.user_id) AS like_count, COUNT(c.comment_id) AS comment_count, CASE WHEN (SELECT liked_at FROM likes WHERE user_id = ? AND post_id = p.post_id LIMIT 1) IS NOT NULL THEN 'liked' ELSE NULL END AS liked_by_me FROM posts p LEFT JOIN users u ON p.user_id = u.user_id LEFT JOIN likes l ON l.post_id = p.post_id LEFT JOIN comments c ON c.post_id = p.post_id GROUP BY p.post_id, p.title, p.body, p.user_id, u.first_name, u.last_name, u.profile_image, p.image, p.created_at;", [req.user.id]);
     res.status(200).send(posts);
 }
 
 export async function likePost(req, res) {
     try {
         let userId = req.user.id;
-        let { postId } = req.body;
+        const { postId } = req.body;
         const db = await getPool();
+
+        console.log(`User ${userId} is trying to like/unlike post ${postId}`);
 
         let [likes] = await db.query("SELECT COUNT(post_id) as count FROM likes WHERE post_id = ? AND user_id = ?", [postId, userId]);
 

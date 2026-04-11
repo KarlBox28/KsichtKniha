@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Registrace – KsichtKniha</title>
+  <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+
+<main class="page narrow">
+  <div class="auth-header">
+    <span class="auth-logo">Ksicht<span>Kniha</span></span>
+    <p class="auth-tagline">Vytvoř si účet</p>
+  </div>
+
+  <div class="card">
+    <div class="card-body">
+      <div id="reg-error"   class="form-error"></div>
+      <div id="reg-success" class="form-success"></div>
+
+      <form id="register-form" novalidate>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="reg-jmeno">Jméno</label>
+            <input type="text" id="reg-jmeno" name="jmeno" placeholder="Jan" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="reg-prijmeni">Příjmení</label>
+            <input type="text" id="reg-prijmeni" name="prijmeni" placeholder="Novák" required>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="reg-username">Uživatelské jméno</label>
+          <input type="text" id="reg-username" name="username"
+                 placeholder="jan.novak" autocomplete="username" required>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="reg-password">Heslo</label>
+          <input type="password" id="reg-password" name="password"
+                 placeholder="Min. 6 znaků" autocomplete="new-password" required minlength="6">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="reg-dob">Datum narození</label>
+            <input type="date" id="reg-dob" name="datum_narozeni" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="reg-gender">Pohlaví</label>
+            <select id="reg-gender" name="pohlavi" required>
+              <option value="">Vyber…</option>
+              <option value="M">Muž</option>
+              <option value="F">Žena</option>
+              <option value="O">Jiné</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Profilová fotka <span style="font-weight:400;text-transform:none">(nepovinné)</span></label>
+          <label class="file-label">
+            📷 Vybrat foto
+            <input type="file" id="reg-photo" name="profile-image" accept="image/*">
+          </label>
+          <img id="photo-preview" class="photo-preview" alt="Náhled fotky">
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width:100%;margin-top:0.5rem">
+          Vytvořit účet
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <p class="auth-switch">
+    Máš účet? <a href="/login.html">Přihlásit se</a>
+  </p>
+</main>
+
+<script type="module" src="/js/register.js"></script>
+</body>
+</html>

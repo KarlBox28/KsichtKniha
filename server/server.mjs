@@ -6,11 +6,13 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from "url";
 import jwtAuthMiddleware from "./middlewares/authentication.middleware.mjs";
+import loggingMiddleware from "./middlewares/logging.middleware.mjs";
 import * as AuthController from "./controllers/auth.controller.mjs";
 import * as ImageController from "./controllers/image.controller.mjs";
 import {upload} from "./middlewares/image.middleware.mjs";
 import * as UserController from "./controllers/user.controller.mjs";
 import * as PostController from "./controllers/post.controller.mjs";
+import jwt from "jsonwebtoken";
 
 ensureJwtSecret();
 getPool();
@@ -18,20 +20,22 @@ getPool();
 const app = express();
 const port = process.env.APP_PORT || 3000;
 app.use('/api/static', express.static('static'));
+app.use('/', express.static('spa'));
 
 app.use(cors());
 app.use(express.json());
+app.use(loggingMiddleware);
 
 app.post("/api/login", AuthController.login);
 app.post("/api/register", AuthController.register);
 app.post("/api/upload-avatar", jwtAuthMiddleware, upload.single('profile-image'), ImageController.uploadAvatar);
-app.get("/api/user-info", UserController.userInfo);
+app.get("/api/user-info", jwtAuthMiddleware, UserController.userInfo);
 app.post("/api/user-info", jwtAuthMiddleware, UserController.editUserInfo);
 app.post("/api/post", jwtAuthMiddleware, PostController.newPost);
 app.delete("/api/post/:id", jwtAuthMiddleware, PostController.deletePost);
 app.put("/api/post/:id", jwtAuthMiddleware, PostController.updatePost);
 app.post("/api/post-image/:id", jwtAuthMiddleware, upload.single('post-image'), ImageController.uploadPostImage);
-app.get("/api/posts", PostController.getAllPosts);
+app.get("/api/posts", jwtAuthMiddleware, PostController.getAllPosts);
 app.post("/api/like-post", jwtAuthMiddleware, PostController.likePost);
 
 

@@ -15,6 +15,7 @@ export default function jwtAuthMiddleware(req, res, next) {
 
     try {
         req.user = jwt.verify(token, process.env.APP_JWT_SECRET); // např. { id, role }
+        console.log("AuthData:", req.user);
         next();
     } catch (err) {
         return res.status(403).json({ message: "Neplatný nebo expirovaný token" });

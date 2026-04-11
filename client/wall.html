@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Zeď – KsichtKniha</title>
+  <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+
+<!-- Navbar injected by nav.js -->
+<div id="navbar-placeholder"></div>
+
+<main class="page">
+  <div class="page-header">
+    <div>
+      <div class="page-title">📰 Zeď</div>
+      <div class="page-subtitle">Nejnovější příspěvky komunity</div>
+    </div>
+  </div>
+
+  <!-- New post form -->
+  <div class="new-post-card">
+    <h3>✍️ Nový příspěvek</h3>
+    <div id="new-post-error" class="form-error"></div>
+    <div class="form-group">
+      <input type="text" id="np-title" placeholder="Nadpis příspěvku (nepovinné)">
+    </div>
+    <div class="form-group">
+      <textarea id="np-content" rows="3" placeholder="Co je nového? Sdílej to s ostatními…"></textarea>
+    </div>
+    <div class="new-post-footer">
+      <label class="file-label">
+        🖼️ Přidat obrázek
+        <input type="file" id="np-image" accept="image/*">
+      </label>
+      <span class="file-name" id="np-fname"></span>
+      <button id="submit-post-btn" class="btn btn-primary" style="margin-left:auto">
+        Publikovat
+      </button>
+    </div>
+  </div>
+
+  <!-- Posts feed -->
+  <div id="posts-container">
+    <div class="spinner"></div>
+  </div>
+</main>
+
+<!-- Edit post modal -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal">
+    <div class="modal-title">✏️ Upravit příspěvek</div>
+    <div class="form-group">
+      <label class="form-label" for="edit-title">Nadpis</label>
+      <input type="text" id="edit-title" placeholder="Nadpis příspěvku">
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="edit-content">Text</label>
+      <textarea id="edit-content" rows="4" placeholder="Co je nového?"></textarea>
+    </div>
+    <div id="edit-error" class="form-error"></div>
+    <div class="modal-footer">
+      <button id="edit-cancel-btn" class="btn btn-outline">Zrušit</button>
+      <button id="edit-save-btn"   class="btn btn-primary">Uložit</button>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="/js/wall.js"></script>
+</body>
+</html>
