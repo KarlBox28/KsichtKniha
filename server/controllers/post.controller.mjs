@@ -103,7 +103,7 @@ export async function updatePost(req, res) {
 export async function getAllPosts(req, res) {
     const db = await getPool();
 
-    let [posts] = await db.query("SELECT p.post_id, p.title, p.body, p.user_id AS author_id, u.first_name, u.last_name, u.profile_image AS user_image, p.image, p.created_at, COUNT(l.user_id) AS like_count, COUNT(c.comment_id) AS comment_count, CASE WHEN (SELECT liked_at FROM likes WHERE user_id = ? AND post_id = p.post_id LIMIT 1) IS NOT NULL THEN 'liked' ELSE NULL END AS liked_by_me FROM posts p LEFT JOIN users u ON p.user_id = u.user_id LEFT JOIN likes l ON l.post_id = p.post_id LEFT JOIN comments c ON c.post_id = p.post_id GROUP BY p.post_id, p.title, p.body, p.user_id, u.first_name, u.last_name, u.profile_image, p.image, p.created_at ORDER BY p.created_at DESC;", [req.user.id]);
+    let [posts] = await db.query("SELECT p.post_id, p.title, p.body, p.user_id AS author_id, u.first_name, u.last_name, u.profile_image AS user_image, p.image, p.created_at, (SELECT COUNT(*) FROM likes l WHERE l.post_id = p.post_id) AS like_count, (SELECT COUNT(*) FROM comments c WHERE c.post_id = p.post_id) AS comment_count, CASE WHEN EXISTS (SELECT 1 FROM likes WHERE user_id = ? AND post_id = p.post_id) THEN 'liked' ELSE NULL END AS liked_by_me FROM posts p LEFT JOIN users u ON p.user_id = u.user_id ORDER BY p.created_at DESC;", [req.user.id]);
     res.status(200).send(posts);
 }
 

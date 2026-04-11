@@ -204,22 +204,24 @@ async function doRegister() {
     try {
         const data = await apiFetch('/api/register', {
             method: 'POST', headers: {'Content-Type':'application/json'},
-            body: JSON.stringify({ jmeno, prijmeni, username, password, datum_narozeni: dob, pohlavi: gender })
+            body: JSON.stringify({ first_name: jmeno, last_name: prijmeni, username: username, password: password, age: age, sex: gender })
         });
+        setAuth(data.token, "");
+        const user_data = await apiFetch('/api/user-info', {
+            method: 'GET', headers: authHeaders(),
+        });
+        setAuth(data.token, user_data);
+
         // Upload avatar if selected
         const photoFile = document.getElementById('reg-photo').files[0];
         if (photoFile && data.token) {
-            setAuth(data.token, data.user);
             const fd = new FormData();
             fd.append('profile-image', photoFile);
             await fetch(API + '/api/upload-avatar', {
                 method: 'POST', headers: { 'Authorization': `Bearer ${data.token}` }, body: fd
             });
         }
-        if (data.token) { setAuth(data.token, data.user); navigate('wall'); return; }
-        suc.textContent = 'Účet vytvořen! Přihlásit se.';
-        suc.style.display = '';
-        setTimeout(() => navigate('login'), 1500);
+        navigate('wall');
     } catch(e) { showErr(err, e.message); }
 }
 

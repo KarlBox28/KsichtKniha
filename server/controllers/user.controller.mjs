@@ -4,7 +4,7 @@ export async function userInfoById(req, res) {
     let userId = req.params.id;
     const db = await getPool();
 
-    let [rows] = await db.query("SELECT u.user_id, u.username, u.first_name, u.last_name, u.sex, u.age, u.profile_image, COUNT(p.post_id) as post_count, COUNT(l.post_id) as like_count FROM users u INNER JOIN posts p ON p.user_id = u.user_id INNER JOIN likes l ON l.user_id = u.user_id WHERE u.user_id = ? GROUP BY u.first_name, u.last_name, u.sex, u.age, u.profile_image", [userId]);
+    let [rows] = await db.query("SELECT u.user_id, u.username, u.first_name, u.last_name, u.sex, u.age, u.profile_image, COUNT(p.post_id) as post_count, COUNT(l.post_id) as like_count FROM users u LEFT JOIN posts p ON p.user_id = u.user_id LEFT JOIN likes l ON l.user_id = u.user_id WHERE u.user_id = ? GROUP BY u.first_name, u.last_name, u.sex, u.age, u.profile_image", [userId]);
     let user = rows[0];
 
     if (!user) {
@@ -45,7 +45,7 @@ export async function userInfo(req, res) {
 export async function getUsers(req, res) {
     try {
         let db = await getPool();
-        let [rows] = await db.query("SELECT u.user_id, u.first_name, u.last_name, u.sex, u.age, u.profile_image, COUNT(p.post_id) as post_count FROM users u INNER JOIN posts p ON p.user_id = u.user_id GROUP BY u.first_name, u.last_name, u.sex, u.age, u.profile_image");
+        let [rows] = await db.query("SELECT u.user_id, u.first_name, u.last_name, u.sex, u.age, u.profile_image, COUNT(p.post_id) as post_count FROM users u LEFT JOIN posts p ON p.user_id = u.user_id GROUP BY u.first_name, u.last_name, u.sex, u.age, u.profile_image");
 
         res.status(200).json(rows);
     } catch(error) {

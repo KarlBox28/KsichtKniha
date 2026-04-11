@@ -20,7 +20,7 @@ getPool();
 const app = express();
 const port = process.env.APP_PORT || 3000;
 app.use('/api/static', express.static('static'));
-app.use('/', express.static('spa'));
+app.use('/', express.static('frontend'));
 
 app.use(cors());
 app.use(express.json());
