@@ -6,6 +6,6 @@ export class Logger {
     }
 
     log(message) {
-        console.log(`${this.prefix}: ${message}`);
+        console.log(`${message}`);
     }
 }

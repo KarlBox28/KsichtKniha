@@ -29,7 +29,9 @@ app.use(loggingMiddleware);
 app.post("/api/login", AuthController.login);
 app.post("/api/register", AuthController.register);
 app.post("/api/upload-avatar", jwtAuthMiddleware, upload.single('profile-image'), ImageController.uploadAvatar);
+app.get("/api/users", jwtAuthMiddleware, UserController.getUsers);
 app.get("/api/user-info", jwtAuthMiddleware, UserController.userInfo);
+app.get("/api/user-info/:id", jwtAuthMiddleware, UserController.userInfoById);
 app.post("/api/user-info", jwtAuthMiddleware, UserController.editUserInfo);
 app.post("/api/post", jwtAuthMiddleware, PostController.newPost);
 app.delete("/api/post/:id", jwtAuthMiddleware, PostController.deletePost);
@@ -37,7 +39,9 @@ app.put("/api/post/:id", jwtAuthMiddleware, PostController.updatePost);
 app.post("/api/post-image/:id", jwtAuthMiddleware, upload.single('post-image'), ImageController.uploadPostImage);
 app.get("/api/posts", jwtAuthMiddleware, PostController.getAllPosts);
 app.post("/api/like-post", jwtAuthMiddleware, PostController.likePost);
-
+app.get("/api/post-likes/:id", jwtAuthMiddleware, PostController.postLikes);
+app.get("/api/post-comments/:id", jwtAuthMiddleware, PostController.postComments);
+app.post("/api/comment", jwtAuthMiddleware, PostController.comment);
 
 
 app.listen(port, () => {

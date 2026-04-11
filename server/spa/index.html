@@ -32,6 +32,13 @@
             <label class="form-label">Text</label>
             <textarea id="edit-content" rows="4" placeholder="Co je nového?"></textarea>
         </div>
+        <div class="form-group">
+            <label class="file-label">
+                Změnit obrázek
+                <input type="file" id="edit-np-image" accept="image/*" onchange="showEditPostFileName(this)">
+            </label>
+            <span class="file-name" id="edit-np-fname"></span>
+        </div>
         <div id="edit-error" class="form-error" style="display:none"></div>
         <div class="modal-footer">
             <button class="btn btn-outline" onclick="closeEditModal()">Zrušit</button>

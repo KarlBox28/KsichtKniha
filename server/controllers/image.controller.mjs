@@ -8,7 +8,7 @@ export async function uploadAvatar(req, res) {
         const userId = req.user.id; // předpokládáme, že uživatel je autentizovaný a máme JWT middleware
         const profile_image = req.file.filename;
 
-        let [rows] = await db.query('SELECT * FROM users WHERE id = ?', [userId]);
+        let [rows] = await db.query('SELECT * FROM users WHERE user_id = ?', [userId]);
         let user = rows[0];
 
         if (user.profile_image) {
@@ -20,7 +20,7 @@ export async function uploadAvatar(req, res) {
         }
 
         // Aktualizace uživatele v DB
-        await db.query('UPDATE users SET profile_image = ? WHERE id = ?', [profile_image, userId]);
+        await db.query('UPDATE users SET profile_image = ? WHERE user_id = ?', [profile_image, userId]);
 
         res.status(200).json({ message: 'Profilový obrázek aktualizován.', profile_image_url: `/api/static/uploads/${profile_image}` });
     } catch (err) {
@@ -38,7 +38,7 @@ export async function uploadPostImage(req, res) {
         const userId = req.user.id; // předpokládáme, že uživatel je autentizovaný a máme JWT middleware
         const post_image = req.file.filename;
 
-        let [rows] = await db.query('SELECT * FROM posts WHERE id = ?', [id]);
+        let [rows] = await db.query('SELECT * FROM posts WHERE post_id = ?', [id]);
         let post = rows[0];
 
         if(!post) { return res.status(400).json({ error: 'Příspěvek nenalezen.' }); }
@@ -53,7 +53,7 @@ export async function uploadPostImage(req, res) {
 
         }
 
-        await db.query('UPDATE posts SET image = ? WHERE id = ?', [post_image, userId]);
+        await db.query('UPDATE posts SET image = ? WHERE post_id = ?', [post_image, id]);
 
         res.status(200).json({ message: 'Obrázek aktualizován.', profile_image_url: `/api/static/uploads/${post_image}` });
     } catch (err) {

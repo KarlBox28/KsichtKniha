@@ -260,6 +260,9 @@ async function renderWall() {
 function showNewPostFileName(input) {
     document.getElementById('np-fname').textContent = input.files[0]?.name || '';
 }
+function showEditPostFileName(input) {
+    document.getElementById('edit-np-fname').textContent = input.files[0]?.name || '';
+}
 async function loadPosts() {
     try {
         const data = await apiFetch('/api/posts', {
@@ -280,7 +283,8 @@ function renderPosts(posts, containerId) {
     c.innerHTML = posts.map(post => renderPostHTML(post)).join('');
 }
 function renderPostHTML(post) {
-    const isOwn = currentUser && (post.author_id === currentUser.id);
+    const isOwn = post.author_id == currentUser.user_id;
+    console.log("je muj: ", isOwn);
     const liked = post.liked_by_me;
     const avatarSrc = post.user_image;
     const avatarHtml = avatarSrc
@@ -304,11 +308,11 @@ function renderPostHTML(post) {
       </div>
       ${isOwn ? `
       <div class="post-actions-header">
-        <button class="btn btn-outline btn-sm" onclick="openEditModal(${post.post_id},'${esc(post.title || '')}','${esc(post.text || post.obsah || '')}')">✏️</button>
+        <button class="btn btn-outline btn-sm" onclick="openEditModal(${post.post_id},'${esc(post.title)}','${esc(post.body)}')">✏️</button>
         <button class="btn btn-danger btn-sm" onclick="deletePost(${post.post_id})">🗑️</button>
       </div>` : ''}
     </div>
-    ${post.nadpis ? `<div class="post-title">${esc(post.title)}</div>` : ''}
+    ${post.title ? `<div class="post-title">${esc(post.title)}</div>` : ''}
     <div class="post-content">${esc(post.body || '')}</div>
     ${imageHtml}
     <div class="post-footer">
@@ -343,9 +347,9 @@ async function submitPost() {
     try {
         const data = await apiFetch('/api/post', {
             method: 'POST', headers: authHeaders(),
-            body: JSON.stringify({ nadpis: title, text: content, obsah: content })
+            body: JSON.stringify({ title: title, body: content })
         });
-        const postId = data.id || data.post_id || data.insertId;
+        const postId = data.insertId;
         // upload image if selected
         const imgFile = document.getElementById('np-image').files[0];
         if (imgFile && postId) {
@@ -374,23 +378,40 @@ function openEditModal(id, title, content) {
     document.getElementById('edit-content').value = content;
     document.getElementById('edit-error').style.display = 'none';
     document.getElementById('edit-modal').style.display = 'flex';
+    document.getElementById('edit-np-image').value = "";
 }
 function closeEditModal() {
     document.getElementById('edit-modal').style.display = 'none';
+    document.getElementById('edit-title').value = "";
+    document.getElementById('edit-content').value = "";
+    document.getElementById('edit-np-fname').innerHTML = "";
+    document.getElementById("edit-np-image").value = "";
     editingPostId = null;
 }
 async function saveEditPost() {
     const title = document.getElementById('edit-title').value.trim();
     const content = document.getElementById('edit-content').value.trim();
+    const imgFile = document.getElementById('edit-np-image').files[0];
+
     const err = document.getElementById('edit-error');
     err.style.display = 'none';
     if (!content) { showErr(err, 'Text nemůže být prázdný.'); return; }
     try {
         await apiFetch(`/api/post/${editingPostId}`, {
             method: 'PUT', headers: authHeaders(),
-            body: JSON.stringify({ nadpis: title, text: content, obsah: content })
+            body: JSON.stringify({ title: title, body: content })
         });
-        closeEditModal(); await loadPosts();
+
+        if (imgFile) {
+            const fd = new FormData(); fd.append('post-image', imgFile);
+            await fetch(`${API}/api/post-image/${editingPostId}`, {
+                method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: fd
+            });
+        }
+
+        closeEditModal();
+        await loadPosts();
+
     } catch(e) { showErr(err, e.message); }
 }
 async function toggleLike(postId, btn) {
@@ -407,18 +428,17 @@ async function toggleLikesPanel(postId) {
     if (panel.style.display !== 'none') { panel.style.display = 'none'; return; }
     panel.style.display = '';
     try {
-        const data = await apiFetch(`/api/post-likes/${postId}`, { headers: { 'Authorization': `Bearer ${token}` } });
-        const likes = Array.isArray(data) ? data : (data.likes || []);
+        const data = await apiFetch(`/api/post-likes/${postId}`, { headers: authHeaders() });
+        const likes = Array.isArray(data) ? data : [];
         const list = document.getElementById(`likes-list-${postId}`);
         if (!likes.length) { list.innerHTML = '<em style="font-size:0.85rem;color:var(--muted)">Nikdo zatím</em>'; return; }
         list.innerHTML = likes.map(l => {
-            const init = ((l.jmeno||'?')[0]+(l.prijmeni||'')[0]).toUpperCase();
-            const av = l.avatar ? `<img class="mini-avatar" src="${API}/api/static/${l.avatar}" style="width:24px;height:24px;border-radius:50%;object-fit:cover">` : `<div class="mini-avatar">${init}</div>`;
-            return `<div class="like-user-row">${av}<span>${l.jmeno || ''} ${l.prijmeni || ''}</span><span class="like-date">${formatDate(l.datum || l.created_at)}</span></div>`;
+            const av = l.profile_image ? `<img class="mini-avatar" src="${API}/api/static/uploads/${l.profile_image}" style="width:24px;height:24px;border-radius:50%;object-fit:cover">` : `<img class="mini-avatar" src="${API}/api/static/default.jpg" style="width:24px;height:24px;border-radius:50%;object-fit:cover">`;
+            return `<div class="like-user-row">${av}<span>${l.first_name || ''} ${l.last_name || ''}</span><span class="like-date">${formatDate(l.liked_at)}</span></div>`;
         }).join('');
     } catch(e) {
         // endpoint may not exist, show a notice
-        document.getElementById(`likes-list-${postId}`).innerHTML = '<em style="font-size:0.85rem;color:var(--muted)">Není k dispozici</em>';
+        document.getElementById(`likes-list-${postId}`).innerHTML = '<span style="font-size:0.85rem;color:var(--muted)">Není k dispozici</span>';
     }
 }
 async function toggleComments(postId) {
@@ -430,25 +450,21 @@ async function toggleComments(postId) {
 async function loadComments(postId) {
     const list = document.getElementById(`comments-list-${postId}`);
     try {
-        const data = await apiFetch(`/api/post-comments/${postId}`, { headers: { 'Authorization': `Bearer ${token}` } });
-        const comments = Array.isArray(data) ? data : (data.comments || []);
+        const data = await apiFetch(`/api/post-comments/${postId}`, { headers: authHeaders() });
+        const comments = Array.isArray(data) ? data : [];
         // Also check local post data
-        const post = allPosts.find(p => p.id === postId);
-        const cmts = comments.length ? comments : (post?.comments || []);
-        renderComments(cmts, list);
-    } catch {
-        const post = allPosts.find(p => p.id === postId);
-        renderComments(post?.comments || [], list);
+        renderComments(comments, list);
+    } catch(e) {
+        document.getElementById(`comments-list-${postId}`).innerHTML = '<span style="font-size:0.85rem;color:var(--muted)">Není k dispozici</span>';
     }
 }
 function renderComments(comments, container) {
     if (!comments.length) { container.innerHTML = '<p style="font-size:0.85rem;color:var(--muted);margin-bottom:0.5rem">Žádné komentáře. Buď první!</p>'; return; }
     container.innerHTML = [...comments].sort((a,b) => new Date(b.datum||b.created_at) - new Date(a.datum||a.created_at))
         .map(c => {
-            const init = ((c.jmeno||c.autor_jmeno||'?')[0] + (c.prijmeni||c.autor_prijmeni||'')[0]).toUpperCase();
-            const av = (c.avatar||c.autor_avatar) ? `<img class="comment-avatar" src="${API}/api/static/${c.avatar||c.autor_avatar}" style="width:32px;height:32px;border-radius:50%;object-fit:cover">` : `<div class="comment-avatar">${init}</div>`;
-            const name = `${c.jmeno||c.autor_jmeno||'?'} ${c.prijmeni||c.autor_prijmeni||''}`.trim();
-            return `<div class="comment-item">${av}<div class="comment-body"><div class="comment-author">${esc(name)}</div><div class="comment-text">${esc(c.text||c.obsah||'')}</div><div class="comment-date">${formatDate(c.datum||c.created_at)}</div></div></div>`;
+            const av = c.profile_image ? `<img class="comment-avatar" src="${API}/api/static/uploads/${c.profile_image}" style="width:32px;height:32px;border-radius:50%;object-fit:cover">` : `<img class="comment-avatar" src="${API}/api/static/default.jpg" style="width:32px;height:32px;border-radius:50%;object-fit:cover">`;
+            const name = `${c.first_name} ${c.last_name}`.trim();
+            return `<div class="comment-item">${av}<div class="comment-body"><div class="comment-author">${esc(name)}</div><div class="comment-text">${esc(c.body)}</div><div class="comment-date">${formatDate(c.commented_at)}</div></div></div>`;
         }).join('');
 }
 async function submitComment(postId) {
@@ -458,11 +474,11 @@ async function submitComment(postId) {
     try {
         await apiFetch(`/api/comment`, {
             method: 'POST', headers: authHeaders(),
-            body: JSON.stringify({ post_id: postId, text })
+            body: JSON.stringify({ postId: postId, body: text })
         });
         input.value = '';
         await loadComments(postId);
-        await loadPosts();
+        await toggleComments(postId);
     } catch(e) { alert('Nepodařilo se přidat komentář: ' + e.message); }
 }
 
@@ -474,14 +490,14 @@ async function renderUsers() {
     p.innerHTML = `
     <div class="page-header">
       <div>
-        <div class="page-title">👥 Uživatelé</div>
+        <div class="page-title">Uživatelé</div>
         <div class="page-subtitle">Všichni registrovaní uživatelé</div>
       </div>
     </div>
     <div id="users-container"><div class="spinner"></div></div>`;
     try {
-        const data = await apiFetch('/api/users', { headers: { 'Authorization': `Bearer ${token}` } });
-        const users = Array.isArray(data) ? data : (data.users || []);
+        const data = await apiFetch('/api/users', { headers: authHeaders() });
+        const users = Array.isArray(data) ? data : [];
         const sorted = [...users].sort((a,b) => (a.prijmeni||'').localeCompare(b.prijmeni||'', 'cs'));
         const c = document.getElementById('users-container');
         if (!sorted.length) {
@@ -489,16 +505,15 @@ async function renderUsers() {
             return;
         }
         c.innerHTML = `<div class="users-grid">${sorted.map(u => {
-            const init = ((u.jmeno||'?')[0]+(u.prijmeni||'')[0]).toUpperCase();
-            const avHtml = u.avatar
-                ? `<img class="user-card-avatar" src="${API}/api/static/${u.avatar}" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:3px solid var(--yellow)" onerror="this.outerHTML='<div class=user-card-avatar>${init}</div>'">`
-                : `<div class="user-card-avatar">${init}</div>`;
+            const avHtml = u.profile_image
+                ? `<img class="user-card-avatar" src="${API}/api/static/uploads/${u.profile_image}" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:3px solid var(--yellow)">`
+                : `<img class="user-card-avatar" src="${API}/api/static/default.jpg" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:3px solid var(--yellow)">`;
             const genderMap = {M:'Muž',F:'Žena',O:'Jiné'};
-            return `<div class="user-card" onclick="navigate('user',{id:${u.id}})">
+            return `<div class="user-card" onclick="navigate('user',{id:${u.user_id}})">
         ${avHtml}
-        <div class="user-card-name">${esc(u.jmeno||'')} ${esc(u.prijmeni||'')}</div>
-        <div class="user-card-info">${genderMap[u.pohlavi]||''} · ${u.vek || calcAge(u.datum_narozeni) || ''} let</div>
-        <div class="user-card-posts">📝 ${u.post_count || u.pocet_prispevku || 0} příspěvků</div>
+        <div class="user-card-name">${esc(u.first_name||'')} ${esc(u.last_name||'')}</div>
+        <div class="user-card-info">${genderMap[u.sex]||''} · ${u.age} let</div>
+        <div class="user-card-posts">${u.post_count} příspěvků</div>
       </div>`;
         }).join('')}</div>`;
     } catch(e) {
@@ -513,60 +528,43 @@ async function renderUserDetail(userId) {
     p.className = '';
     p.innerHTML = `<button class="back-btn" onclick="navigate('users')">← Zpět na uživatele</button><div class="spinner"></div>`;
     try {
-        const user = await apiFetch(`/api/user-info?id=${userId}`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const user = await apiFetch(`/api/user-info/${userId}`, { headers: { 'Authorization': `Bearer ${token}` } });
         const postsData = await apiFetch('/api/posts', { headers: { 'Authorization': `Bearer ${token}` } }).catch(() => []);
-        const allP = Array.isArray(postsData) ? postsData : (postsData.posts || []);
-        const uid = user.id || userId;
-        const userPosts = allP.filter(p => (p.user_id || p.autor_id) == uid);
-        const likedPosts = allP.filter(p => p.liked_by_user_id == uid || (p.likers||[]).includes(uid));
-        const commentedPosts = allP.filter(p => (p.comments||[]).some(c => (c.user_id||c.autor_id) == uid));
-        const relatedPosts = [...new Map([...userPosts,...likedPosts,...commentedPosts].map(p=>[p.id,p])).values()];
-
+        const allP = Array.isArray(postsData) ? postsData : [];
+        const uid = user.user_id;
+        const userPosts = allP.filter(p => (p.author_id == uid));
+        const u = user;
         const genderMap = {M:'Muž',F:'Žena',O:'Jiné'};
-        const init = ((user.jmeno||'?')[0]+(user.prijmeni||'')[0]).toUpperCase();
-        const avHtml = user.avatar
-            ? `<img class="user-detail-avatar" src="${API}/api/static/${user.avatar}" style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:4px solid var(--yellow)" onerror="this.outerHTML='<div class=user-detail-avatar>${init}</div>'">`
-            : `<div class="user-detail-avatar">${init}</div>`;
+        const avHtml = u.profile_image
+            ? `<img class="user-card-avatar" src="${API}/api/static/uploads/${u.profile_image}" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:3px solid var(--yellow)">`
+            : `<img class="user-card-avatar" src="${API}/api/static/default.jpg" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:3px solid var(--yellow)">`;
 
         p.innerHTML = `
       <button class="back-btn" onclick="navigate('users')">← Zpět na uživatele</button>
       <div class="user-detail-header">
         ${avHtml}
         <div class="user-detail-info">
-          <div class="user-detail-name">${esc(user.jmeno||'')} ${esc(user.prijmeni||'')}</div>
-          <div class="user-detail-meta">@${esc(user.username||'')} · ${genderMap[user.pohlavi]||''} · ${user.vek || calcAge(user.datum_narozeni) || ''} let</div>
+          <div class="user-detail-name">${esc(user.first_name)} ${esc(user.last_name)}</div>
+          <div class="user-detail-meta">@${user.username} · ${genderMap[user.sex]||''} · ${user.age || ''} let</div>
           <div class="user-detail-stats">
             <div class="stat-pill"><strong>${userPosts.length}</strong> příspěvků</div>
-            <div class="stat-pill"><strong>${likedPosts.length}</strong> lajků dáno</div>
+            <div class="stat-pill"><strong>${user.like_count}</strong> lajků dáno</div>
           </div>
         </div>
       </div>
-      <div class="section-title">📝 Aktivita uživatele</div>
+      <div class="section-title">Aktivita uživatele</div>
       <div id="user-posts-tabs">
         <div class="tabs">
-          <button class="tab-btn active" onclick="switchTab('own')">Příspěvky (${userPosts.length})</button>
-          <button class="tab-btn" onclick="switchTab('related')">Veškerá aktivita (${relatedPosts.length})</button>
+          <button class="tab-btn active">Příspěvky (${userPosts.length})</button>
         </div>
       </div>
       <div id="user-posts-container"></div>`;
 
         window._userPosts = userPosts;
-        window._relatedPosts = relatedPosts;
         allPosts = allP;
-        switchTab('own');
     } catch(e) {
         p.innerHTML = `<button class="back-btn" onclick="navigate('users')">← Zpět</button><div class="form-error">Chyba: ${e.message}</div>`;
     }
-}
-function switchTab(tab) {
-    document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', (i===0&&tab==='own')||(i===1&&tab==='related')));
-    const posts = tab === 'own' ? window._userPosts : window._relatedPosts;
-    const c = document.getElementById('user-posts-container');
-    if (!posts.length) {
-        c.innerHTML = `<div class="empty-state"><div class="icon">📭</div><p>Žádná aktivita</p></div>`;
-        return;
-    }
-    c.innerHTML = posts.map(post => renderPostHTML(post)).join('');
 }
 
 // ─── HELPERS ─────────────────────────────────────────────────
@@ -579,14 +577,6 @@ function formatDate(str) {
     const d = new Date(str);
     if (isNaN(d)) return str;
     return d.toLocaleString('cs-CZ', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
-}
-function calcAge(dob) {
-    if (!dob) return null;
-    const birth = new Date(dob);
-    const today = new Date();
-    let age = today.getFullYear() - birth.getFullYear();
-    if (today < new Date(today.getFullYear(), birth.getMonth(), birth.getDate())) age--;
-    return age;
 }
 
 // ─── INIT ────────────────────────────────────────────────────
