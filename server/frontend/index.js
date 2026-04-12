@@ -50,7 +50,7 @@ function renderNavbar() {
   `;
     const nu = document.getElementById('nav-user');
     const avatarHtml = currentUser?.profile_image
-        ? `<img class="nav-avatar" src="${API}/api/static/${currentUser.profile_image}">`
+        ? `<img class="nav-avatar" src="${API}/api/static/uploads/${currentUser.profile_image}">`
         : `<img class="nav-avatar" src="${API}/api/static/default.jpg">`;
     nu.innerHTML = `
     ${avatarHtml}
@@ -290,7 +290,7 @@ function renderPostHTML(post) {
     const liked = post.liked_by_me;
     const avatarSrc = post.user_image;
     const avatarHtml = avatarSrc
-        ? `<img class="post-avatar" src="${API}/api/static/${avatarSrc}" alt="user avatar">`
+        ? `<img class="post-avatar" src="${API}/api/static/uploads/${avatarSrc}" alt="user avatar">`
         : `<img class="post-avatar" src="${API}/api/static/default.jpg" alt="user avatar">`;
     const authorName = `${post.first_name} ${post.last_name}`.trim();
     const authorId = post.author_id;
@@ -481,6 +481,7 @@ async function submitComment(postId) {
         input.value = '';
         await loadComments(postId);
         await toggleComments(postId);
+        await loadPosts();
     } catch(e) { alert('Nepodařilo se přidat komentář: ' + e.message); }
 }
 
@@ -529,44 +530,112 @@ async function renderUserDetail(userId) {
     const p = document.getElementById('page');
     p.className = '';
     p.innerHTML = `<button class="back-btn" onclick="navigate('users')">← Zpět na uživatele</button><div class="spinner"></div>`;
+
     try {
-        const user = await apiFetch(`/api/user-info/${userId}`, { headers: { 'Authorization': `Bearer ${token}` } });
-        const postsData = await apiFetch('/api/posts', { headers: { 'Authorization': `Bearer ${token}` } }).catch(() => []);
-        const allP = Array.isArray(postsData) ? postsData : [];
-        const uid = user.user_id;
-        const userPosts = allP.filter(p => (p.author_id == uid));
-        const u = user;
-        const genderMap = {M:'Muž',F:'Žena',O:'Jiné'};
-        const avHtml = u.profile_image
-            ? `<img class="user-card-avatar" src="${API}/api/static/uploads/${u.profile_image}" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:3px solid var(--yellow)">`
-            : `<img class="user-card-avatar" src="${API}/api/static/default.jpg" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:3px solid var(--yellow)">`;
+        // Načteme info o uživateli a jeho příspěvky/aktivitu paralelně
+        const [user, detailPosts] = await Promise.all([
+            apiFetch(`/api/user-info/${userId}`, { headers: { 'Authorization': `Bearer ${token}` } }),
+            apiFetch(`/api/user-detail-posts/${userId}`, { headers: { 'Authorization': `Bearer ${token}` } }),
+        ]);
+
+        // Rozdělení podle vztahu k uživateli
+        const ownPosts       = detailPosts.filter(p => p.relation === 'own');
+        const likedPosts     = detailPosts.filter(p => p.relation === 'liked');
+        const commentedPosts = detailPosts.filter(p => p.relation === 'commented');
+
+        // Veškerá aktivita = own + liked + commented (bez duplicit dle post_id)
+        const activityMap = new Map();
+        detailPosts.forEach(post => activityMap.set(post.post_id, post));
+        const activityPosts = [...activityMap.values()]
+            .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+        const genderMap = { M: 'Muž', F: 'Žena', O: 'Jiné' };
+        const avHtml = user.profile_image
+            ? `<img class="user-detail-avatar" src="${API}/api/static/uploads/${user.profile_image}" style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:4px solid var(--yellow)">`
+            : `<img class="user-detail-avatar" src="${API}/api/static/default.jpg"  style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:4px solid var(--yellow)">`;
 
         p.innerHTML = `
-      <button class="back-btn" onclick="navigate('users')">← Zpět na uživatele</button>
-      <div class="user-detail-header">
-        ${avHtml}
-        <div class="user-detail-info">
-          <div class="user-detail-name">${esc(user.first_name)} ${esc(user.last_name)}</div>
-          <div class="user-detail-meta">@${user.username} · ${genderMap[user.sex]||''} · ${user.age || ''} let</div>
-          <div class="user-detail-stats">
-            <div class="stat-pill"><strong>${userPosts.length}</strong> příspěvků</div>
-            <div class="stat-pill"><strong>${user.like_count}</strong> lajků dáno</div>
+          <button class="back-btn" onclick="navigate('users')">← Zpět na uživatele</button>
+ 
+          <div class="user-detail-header">
+            ${avHtml}
+            <div class="user-detail-info">
+              <div class="user-detail-name">${esc(user.first_name)} ${esc(user.last_name)}</div>
+              <div class="user-detail-meta">
+                @${esc(user.username)} · ${genderMap[user.sex] || ''} · ${user.age || ''} let
+              </div>
+              <div class="user-detail-stats">
+                <div class="stat-pill"><strong>${user.post_count}</strong> příspěvků</div>
+                <div class="stat-pill"><strong>${user.like_count}</strong> lajků dáno</div>
+                <div class="stat-pill"><strong>${likedPosts.length + commentedPosts.length}</strong>${(likedPosts.length + commentedPosts.length) <= 4 ? " interakce":" interakcí"} s ostatními</div>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
-      <div class="section-title">Aktivita uživatele</div>
-      <div id="user-posts-tabs">
-        <div class="tabs">
-          <button class="tab-btn active">Příspěvky (${userPosts.length})</button>
-        </div>
-      </div>
-      <div id="user-posts-container"></div>`;
+ 
+          <div class="section-title">Aktivita uživatele</div>
+ 
+          <div class="tabs">
+            <button class="tab-btn active" id="tab-own"
+                    onclick="switchUserTab('own')">
+              Příspěvky (${ownPosts.length})
+            </button>
+            <button class="tab-btn" id="tab-liked"
+                    onclick="switchUserTab('liked')">
+              Olajkoval (${likedPosts.length})
+            </button>
+            <button class="tab-btn" id="tab-commented"
+                    onclick="switchUserTab('commented')">
+              Komentoval (${commentedPosts.length})
+            </button>
+            <button class="tab-btn" id="tab-all"
+                    onclick="switchUserTab('all')">
+              Vše (${activityPosts.length})
+            </button>
+          </div>
+ 
+          <div id="user-posts-container"></div>`;
 
-        window._userPosts = userPosts;
-        allPosts = allP;
-    } catch(e) {
-        p.innerHTML = `<button class="back-btn" onclick="navigate('users')">← Zpět</button><div class="form-error">Chyba: ${e.message}</div>`;
+        // Ulož data pro přepínání tabů
+        window._userDetailData = { ownPosts, likedPosts, commentedPosts, activityPosts };
+
+        // Zobraz výchozí tab
+        switchUserTab('own');
+
+    } catch (e) {
+        p.innerHTML = `
+          <button class="back-btn" onclick="navigate('users')">← Zpět</button>
+          <div class="form-error" style="display:block">Chyba: ${esc(e.message)}</div>`;
     }
+}
+
+function switchUserTab(tab) {
+    // Přepni zvýraznění tlačítek
+    ['own', 'liked', 'commented', 'all'].forEach(t => {
+        document.getElementById(`tab-${t}`)?.classList.toggle('active', t === tab);
+    });
+
+    const { ownPosts, likedPosts, commentedPosts, activityPosts } = window._userDetailData;
+    const map = {
+        own:       ownPosts,
+        liked:     likedPosts,
+        commented: commentedPosts,
+        all:       activityPosts,
+    };
+    const posts = map[tab] ?? [];
+    const container = document.getElementById('user-posts-container');
+
+    if (!posts.length) {
+        const labels = { own: 'příspěvky', liked: 'olajkované příspěvky', commented: 'komentáře', all: 'aktivitu' };
+        container.innerHTML = `
+          <div class="empty-state">
+            <div class="icon">📭</div>
+            <p>Žádné ${labels[tab] ?? 'záznamy'}</p>
+          </div>`;
+        return;
+    }
+
+    // Použij existující renderPostHTML — funguje pro všechny typy příspěvků
+    container.innerHTML = posts.map(post => renderPostHTML(post)).join('');
 }
 
 // ─── HELPERS ─────────────────────────────────────────────────

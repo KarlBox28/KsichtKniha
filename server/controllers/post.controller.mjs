@@ -26,7 +26,7 @@ export async function postLikes(req, res) {
 export async function postComments(req, res) {
     try {
         const db = await getPool();
-        let [result] = await db.query("SELECT u.first_name, u.last_name, u.profile_image, c.commented_at, c.body FROM comments c INNER JOIN users u ON u.user_id = c.user_id WHERE c.post_id = ?", [req.params.id]);
+        let [result] = await db.query("SELECT u.first_name, u.last_name, u.profile_image, c.commented_at, c.body FROM comments c INNER JOIN users u ON u.user_id = c.user_id WHERE c.post_id = ? ORDER BY c.commented_at DESC", [req.params.id]);
         console.log(result);
         res.status(200).send(result);
     } catch (error) {

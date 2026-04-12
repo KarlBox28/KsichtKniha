@@ -42,6 +42,7 @@ app.post("/api/like-post", jwtAuthMiddleware, PostController.likePost);
 app.get("/api/post-likes/:id", jwtAuthMiddleware, PostController.postLikes);
 app.get("/api/post-comments/:id", jwtAuthMiddleware, PostController.postComments);
 app.post("/api/comment", jwtAuthMiddleware, PostController.comment);
+app.get("/api/user-detail-posts/:id", jwtAuthMiddleware, UserController.userDetailPosts);
 
 
 app.listen(port, () => {
