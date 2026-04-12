@@ -1,3 +1,7 @@
+CREATE DATABASE ksichtkniha;
+
+USE ksichtkniha;
+
 --
 -- Struktura tabulky `comments`
 --
