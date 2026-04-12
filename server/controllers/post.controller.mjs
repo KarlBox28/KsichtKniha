@@ -1,4 +1,5 @@
 import getPool from "../db/db.mjs";
+import sanitizeHtml from "sanitize-html";
 
 export async function comment(req, res) {
     try {
@@ -40,8 +41,9 @@ export async function newPost(req, res) {
         const db = await getPool();
         const userId = req.user.id;
         const { title, body } = req.body;
+        const clean_body = sanitizeHtml(body);
 
-        let [result] = await db.query("INSERT INTO posts(user_id, title, body) VALUES (?, ?, ?)", [userId, title, body]);
+        let [result] = await db.query("INSERT INTO posts(user_id, title, body) VALUES (?, ?, ?)", [userId, title, clean_body]);
         res.status(200).send({ insertId: result.insertId });
     } catch (error) {
         res.status(400).send({error: error.message});

@@ -234,7 +234,7 @@ async function renderWall() {
     p.innerHTML = `
     <div class="page-header">
       <div>
-        <div class="page-title"Zeď</div>
+        <div class="page-title">Zeď</div>
         <div class="page-subtitle">Nejnovější příspěvky komunity</div>
       </div>
     </div>
@@ -245,7 +245,7 @@ async function renderWall() {
         <input type="text" id="np-title" placeholder="Nadpis příspěvku">
       </div>
       <div class="form-group">
-        <textarea id="np-content" placeholder="Co je nového? Sdílej to s ostatními..." rows="3"></textarea>
+        <div id="np-quill-editor" style="height:120px"></div>
       </div>
       <div class="new-post-footer">
         <label class="file-label">
@@ -257,6 +257,21 @@ async function renderWall() {
       </div>
     </div>
     <div id="posts-container"><div class="spinner"></div></div>`;
+
+    // Inicializuj Quill až po nastavení innerHTML — element musí existovat v DOM
+    window.npQuill = new Quill('#np-quill-editor', {
+        theme: 'snow',
+        placeholder: 'Co je nového? Sdílej to s ostatními…',
+        modules: {
+            toolbar: [
+                ['bold', 'italic', 'underline', 'strike'],
+                [{ list: 'ordered' }, { list: 'bullet' }],
+                ['link'],
+                ['clean']
+            ]
+        }
+    });
+
     await loadPosts();
 }
 function showNewPostFileName(input) {
@@ -286,7 +301,6 @@ function renderPosts(posts, containerId) {
 }
 function renderPostHTML(post) {
     const isOwn = post.author_id == currentUser.user_id;
-    console.log("je muj: ", isOwn);
     const liked = post.liked_by_me;
     const avatarSrc = post.user_image;
     const avatarHtml = avatarSrc
@@ -296,26 +310,33 @@ function renderPostHTML(post) {
     const authorId = post.author_id;
     const likeCount = post.like_count;
     const commentCount = post.comment_count;
-    const imageHtml = (post.image || post.image)
-        ? `<img class="post-image" src="${API}/api/static/uploads/${post.image || post.obrazek}" alt="Obrázek příspěvku">`
+    const imageHtml = post.image
+        ? `<img class="post-image" src="${API}/api/static/uploads/${post.image}" alt="Obrázek příspěvku">`
         : '';
     const date = formatDate(post.created_at);
+
+    // post.body je HTML z Quillu — renderujeme přímo jako innerHTML.
+    // Quillův obsah pochází z naší vlastní DB, ale pro jistotu
+    // sanitizuj na backendu pomocí sanitize-html (npm).
+    const bodyHtml = post.body || '';
+
     return `
   <div class="post-card" id="post-${post.post_id}">
     <div class="post-header">
       ${avatarHtml}
       <div class="post-meta">
-        <a class="post-author" onclick="navigate('user',{id:${authorId}})">${authorName}</a>
+        <a class="post-author" onclick="navigate('user',{id:${authorId}})">${esc(authorName)}</a>
         <div class="post-date">${date}</div>
       </div>
       ${isOwn ? `
       <div class="post-actions-header">
-        <button class="btn btn-outline btn-sm" onclick="openEditModal(${post.post_id},'${esc(post.title)}','${esc(post.body)}')">✏️</button>
+        <button class="btn btn-outline btn-sm" onclick="openEditModal(${post.post_id})">✏️</button>
         <button class="btn btn-danger btn-sm" onclick="deletePost(${post.post_id})">🗑️</button>
       </div>` : ''}
     </div>
     ${post.title ? `<div class="post-title">${esc(post.title)}</div>` : ''}
-    <div class="post-content">${esc(post.body || '')}</div>
+    <div class="post-content ql-editor" style="padding:0 1.25rem 0.75rem">${bodyHtml}</div>
+    <div id="raw-body-${post.post_id}" style="display:none">${esc(bodyHtml)}</div>
     ${imageHtml}
     <div class="post-footer">
       <button class="like-btn ${liked ? 'liked' : ''}" onclick="toggleLike(${post.post_id},this)">
@@ -341,18 +362,20 @@ function renderPostHTML(post) {
   </div>`;
 }
 async function submitPost() {
-    const title = document.getElementById('np-title').value.trim();
-    const content = document.getElementById('np-content').value.trim();
-    const err = document.getElementById('new-post-error');
+    const title   = document.getElementById('np-title').value.trim();
+    const content = window.npQuill.root.innerHTML.trim();
+    const err     = document.getElementById('new-post-error');
     err.style.display = 'none';
-    if (!content) { showErr(err, 'Napiš něco před publikováním.'); return; }
+    // Quill prázdný editor vrací '<p><br></p>'
+    if (!content || content === '<p><br></p>') {
+        showErr(err, 'Napiš něco před publikováním.'); return;
+    }
     try {
         const data = await apiFetch('/api/post', {
             method: 'POST', headers: authHeaders(),
             body: JSON.stringify({ title: title, body: content })
         });
         const postId = data.insertId;
-        // upload image if selected
         const imgFile = document.getElementById('np-image').files[0];
         if (imgFile && postId) {
             const fd = new FormData(); fd.append('post-image', imgFile);
@@ -361,7 +384,7 @@ async function submitPost() {
             });
         }
         document.getElementById('np-title').value = '';
-        document.getElementById('np-content').value = '';
+        window.npQuill.setContents([]);
         document.getElementById('np-image').value = '';
         document.getElementById('np-fname').textContent = '';
         await loadPosts();
@@ -374,46 +397,49 @@ async function deletePost(id) {
         await loadPosts();
     } catch(e) { alert(e.message); }
 }
-function openEditModal(id, title, content) {
+function openEditModal(id) {
     editingPostId = id;
-    document.getElementById('edit-title').value = title;
-    document.getElementById('edit-content').value = content;
+    // Titul čteme z DOM — bezpečné, protože jsme ho vyescapovali při renderování
+    const card = document.getElementById(`post-${id}`);
+    const titleEl = card.querySelector('.post-title');
+    document.getElementById('edit-title').value = titleEl ? titleEl.textContent.trim() : '';
+    // Body čteme z hidden elementu, kde je uložen jako escaped HTML
+    const rawBody = document.getElementById(`raw-body-${id}`).textContent;
+    window.editQuill.root.innerHTML = rawBody;
     document.getElementById('edit-error').style.display = 'none';
     document.getElementById('edit-modal').style.display = 'flex';
-    document.getElementById('edit-np-image').value = "";
+    document.getElementById('edit-np-image').value = '';
 }
 function closeEditModal() {
     document.getElementById('edit-modal').style.display = 'none';
-    document.getElementById('edit-title').value = "";
-    document.getElementById('edit-content').value = "";
-    document.getElementById('edit-np-fname').innerHTML = "";
-    document.getElementById("edit-np-image").value = "";
+    document.getElementById('edit-title').value = '';
+    window.editQuill.setContents([]);
+    document.getElementById('edit-np-fname').innerHTML = '';
+    document.getElementById('edit-np-image').value = '';
     editingPostId = null;
 }
 async function saveEditPost() {
-    const title = document.getElementById('edit-title').value.trim();
-    const content = document.getElementById('edit-content').value.trim();
+    const title   = document.getElementById('edit-title').value.trim();
+    const content = window.editQuill.root.innerHTML.trim();
     const imgFile = document.getElementById('edit-np-image').files[0];
-
-    const err = document.getElementById('edit-error');
+    const err     = document.getElementById('edit-error');
     err.style.display = 'none';
-    if (!content) { showErr(err, 'Text nemůže být prázdný.'); return; }
+    if (!content || content === '<p><br></p>') {
+        showErr(err, 'Text nemůže být prázdný.'); return;
+    }
     try {
         await apiFetch(`/api/post/${editingPostId}`, {
             method: 'PUT', headers: authHeaders(),
             body: JSON.stringify({ title: title, body: content })
         });
-
         if (imgFile) {
             const fd = new FormData(); fd.append('post-image', imgFile);
             await fetch(`${API}/api/post-image/${editingPostId}`, {
                 method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: fd
             });
         }
-
         closeEditModal();
         await loadPosts();
-
     } catch(e) { showErr(err, e.message); }
 }
 async function toggleLike(postId, btn) {
@@ -435,11 +461,12 @@ async function toggleLikesPanel(postId) {
         const list = document.getElementById(`likes-list-${postId}`);
         if (!likes.length) { list.innerHTML = '<em style="font-size:0.85rem;color:var(--muted)">Nikdo zatím</em>'; return; }
         list.innerHTML = likes.map(l => {
-            const av = l.profile_image ? `<img class="mini-avatar" src="${API}/api/static/uploads/${l.profile_image}" style="width:24px;height:24px;border-radius:50%;object-fit:cover">` : `<img class="mini-avatar" src="${API}/api/static/default.jpg" style="width:24px;height:24px;border-radius:50%;object-fit:cover">`;
+            const av = l.profile_image
+                ? `<img class="mini-avatar" src="${API}/api/static/uploads/${l.profile_image}" style="width:24px;height:24px;border-radius:50%;object-fit:cover">`
+                : `<img class="mini-avatar" src="${API}/api/static/default.jpg" style="width:24px;height:24px;border-radius:50%;object-fit:cover">`;
             return `<div class="like-user-row">${av}<span>${l.first_name || ''} ${l.last_name || ''}</span><span class="like-date">${formatDate(l.liked_at)}</span></div>`;
         }).join('');
     } catch(e) {
-        // endpoint may not exist, show a notice
         document.getElementById(`likes-list-${postId}`).innerHTML = '<span style="font-size:0.85rem;color:var(--muted)">Není k dispozici</span>';
     }
 }
@@ -454,7 +481,6 @@ async function loadComments(postId) {
     try {
         const data = await apiFetch(`/api/post-comments/${postId}`, { headers: authHeaders() });
         const comments = Array.isArray(data) ? data : [];
-        // Also check local post data
         renderComments(comments, list);
     } catch(e) {
         document.getElementById(`comments-list-${postId}`).innerHTML = '<span style="font-size:0.85rem;color:var(--muted)">Není k dispozici</span>';
@@ -462,9 +488,11 @@ async function loadComments(postId) {
 }
 function renderComments(comments, container) {
     if (!comments.length) { container.innerHTML = '<p style="font-size:0.85rem;color:var(--muted);margin-bottom:0.5rem">Žádné komentáře. Buď první!</p>'; return; }
-    container.innerHTML = [...comments].sort((a,b) => new Date(b.datum||b.created_at) - new Date(a.datum||a.created_at))
+    container.innerHTML = [...comments].sort((a,b) => new Date(b.commented_at) - new Date(a.commented_at))
         .map(c => {
-            const av = c.profile_image ? `<img class="comment-avatar" src="${API}/api/static/uploads/${c.profile_image}" style="width:32px;height:32px;border-radius:50%;object-fit:cover">` : `<img class="comment-avatar" src="${API}/api/static/default.jpg" style="width:32px;height:32px;border-radius:50%;object-fit:cover">`;
+            const av = c.profile_image
+                ? `<img class="comment-avatar" src="${API}/api/static/uploads/${c.profile_image}" style="width:32px;height:32px;border-radius:50%;object-fit:cover">`
+                : `<img class="comment-avatar" src="${API}/api/static/default.jpg" style="width:32px;height:32px;border-radius:50%;object-fit:cover">`;
             const name = `${c.first_name} ${c.last_name}`.trim();
             return `<div class="comment-item">${av}<div class="comment-body"><div class="comment-author">${esc(name)}</div><div class="comment-text">${esc(c.body)}</div><div class="comment-date">${formatDate(c.commented_at)}</div></div></div>`;
         }).join('');
@@ -501,7 +529,7 @@ async function renderUsers() {
     try {
         const data = await apiFetch('/api/users', { headers: authHeaders() });
         const users = Array.isArray(data) ? data : [];
-        const sorted = [...users].sort((a,b) => (a.prijmeni||'').localeCompare(b.prijmeni||'', 'cs'));
+        const sorted = [...users].sort((a,b) => (a.last_name||'').localeCompare(b.last_name||'', 'cs'));
         const c = document.getElementById('users-container');
         if (!sorted.length) {
             c.innerHTML = `<div class="empty-state"><div class="icon">👻</div><p>Žádní uživatelé</p></div>`;
@@ -532,18 +560,15 @@ async function renderUserDetail(userId) {
     p.innerHTML = `<button class="back-btn" onclick="navigate('users')">← Zpět na uživatele</button><div class="spinner"></div>`;
 
     try {
-        // Načteme info o uživateli a jeho příspěvky/aktivitu paralelně
         const [user, detailPosts] = await Promise.all([
             apiFetch(`/api/user-info/${userId}`, { headers: { 'Authorization': `Bearer ${token}` } }),
             apiFetch(`/api/user-detail-posts/${userId}`, { headers: { 'Authorization': `Bearer ${token}` } }),
         ]);
 
-        // Rozdělení podle vztahu k uživateli
         const ownPosts       = detailPosts.filter(p => p.relation === 'own');
         const likedPosts     = detailPosts.filter(p => p.relation === 'liked');
         const commentedPosts = detailPosts.filter(p => p.relation === 'commented');
 
-        // Veškerá aktivita = own + liked + commented (bez duplicit dle post_id)
         const activityMap = new Map();
         detailPosts.forEach(post => activityMap.set(post.post_id, post));
         const activityPosts = [...activityMap.values()]
@@ -552,11 +577,11 @@ async function renderUserDetail(userId) {
         const genderMap = { M: 'Muž', F: 'Žena', O: 'Jiné' };
         const avHtml = user.profile_image
             ? `<img class="user-detail-avatar" src="${API}/api/static/uploads/${user.profile_image}" style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:4px solid var(--yellow)">`
-            : `<img class="user-detail-avatar" src="${API}/api/static/default.jpg"  style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:4px solid var(--yellow)">`;
+            : `<img class="user-detail-avatar" src="${API}/api/static/default.jpg" style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:4px solid var(--yellow)">`;
 
         p.innerHTML = `
           <button class="back-btn" onclick="navigate('users')">← Zpět na uživatele</button>
- 
+
           <div class="user-detail-header">
             ${avHtml}
             <div class="user-detail-info">
@@ -567,38 +592,31 @@ async function renderUserDetail(userId) {
               <div class="user-detail-stats">
                 <div class="stat-pill"><strong>${user.post_count}</strong> příspěvků</div>
                 <div class="stat-pill"><strong>${user.like_count}</strong> lajků dáno</div>
-                <div class="stat-pill"><strong>${likedPosts.length + commentedPosts.length}</strong>${(likedPosts.length + commentedPosts.length) <= 4 ? " interakce":" interakcí"} s ostatními</div>
+                <div class="stat-pill"><strong>${likedPosts.length + commentedPosts.length}</strong>${(likedPosts.length + commentedPosts.length) <= 4 ? " interakce" : " interakcí"} s ostatními</div>
               </div>
             </div>
           </div>
- 
+
           <div class="section-title">Aktivita uživatele</div>
- 
+
           <div class="tabs">
-            <button class="tab-btn active" id="tab-own"
-                    onclick="switchUserTab('own')">
+            <button class="tab-btn active" id="tab-own" onclick="switchUserTab('own')">
               Příspěvky (${ownPosts.length})
             </button>
-            <button class="tab-btn" id="tab-liked"
-                    onclick="switchUserTab('liked')">
+            <button class="tab-btn" id="tab-liked" onclick="switchUserTab('liked')">
               Olajkoval (${likedPosts.length})
             </button>
-            <button class="tab-btn" id="tab-commented"
-                    onclick="switchUserTab('commented')">
+            <button class="tab-btn" id="tab-commented" onclick="switchUserTab('commented')">
               Komentoval (${commentedPosts.length})
             </button>
-            <button class="tab-btn" id="tab-all"
-                    onclick="switchUserTab('all')">
+            <button class="tab-btn" id="tab-all" onclick="switchUserTab('all')">
               Vše (${activityPosts.length})
             </button>
           </div>
- 
+
           <div id="user-posts-container"></div>`;
 
-        // Ulož data pro přepínání tabů
         window._userDetailData = { ownPosts, likedPosts, commentedPosts, activityPosts };
-
-        // Zobraz výchozí tab
         switchUserTab('own');
 
     } catch (e) {
@@ -609,18 +627,12 @@ async function renderUserDetail(userId) {
 }
 
 function switchUserTab(tab) {
-    // Přepni zvýraznění tlačítek
     ['own', 'liked', 'commented', 'all'].forEach(t => {
         document.getElementById(`tab-${t}`)?.classList.toggle('active', t === tab);
     });
 
     const { ownPosts, likedPosts, commentedPosts, activityPosts } = window._userDetailData;
-    const map = {
-        own:       ownPosts,
-        liked:     likedPosts,
-        commented: commentedPosts,
-        all:       activityPosts,
-    };
+    const map = { own: ownPosts, liked: likedPosts, commented: commentedPosts, all: activityPosts };
     const posts = map[tab] ?? [];
     const container = document.getElementById('user-posts-container');
 
@@ -634,7 +646,6 @@ function switchUserTab(tab) {
         return;
     }
 
-    // Použij existující renderPostHTML — funguje pro všechny typy příspěvků
     container.innerHTML = posts.map(post => renderPostHTML(post)).join('');
 }
 
