@@ -207,11 +207,6 @@ async function doRegister() {
             body: JSON.stringify({ first_name: jmeno, last_name: prijmeni, username: username, password: password, age: age, sex: gender })
         });
         setAuth(data.token, "");
-        const user_data = await apiFetch('/api/user-info', {
-            method: 'GET', headers: authHeaders(),
-        });
-        setAuth(data.token, user_data);
-
         // Upload avatar if selected
         const photoFile = document.getElementById('reg-photo').files[0];
         if (photoFile && data.token) {
@@ -221,6 +216,11 @@ async function doRegister() {
                 method: 'POST', headers: { 'Authorization': `Bearer ${data.token}` }, body: fd
             });
         }
+
+        const user_data = await apiFetch('/api/user-info', {
+            method: 'GET', headers: authHeaders(),
+        });
+        setAuth(data.token, user_data);
         navigate('wall');
     } catch(e) { showErr(err, e.message); }
 }
