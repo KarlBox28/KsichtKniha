@@ -480,3 +480,47 @@ textarea { resize: vertical; min-height: 80px; }
         margin: auto;
     }
 }
+/* ── PROFILE MODAL AVATAR ── */
+.profile-modal-avatar-wrap {
+    position: relative;
+    width: 96px;
+    height: 96px;
+    margin: 0 auto 1.25rem;
+}
+.profile-modal-avatar {
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid var(--yellow);
+    display: block;
+}
+.profile-modal-avatar-btn {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: var(--yellow);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.85rem;
+    border: 2px solid #fff;
+    transition: transform 0.15s;
+}
+.profile-modal-avatar-btn:hover { transform: scale(1.1); }
+
+
+.nav-user-info {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    border-radius: 999px;
+    padding: 0.25rem 0.6rem 0.25rem 0.25rem;
+    transition: background 0.15s;
+}
+.nav-user-info:hover { background: rgba(0,0,0,0.06); }

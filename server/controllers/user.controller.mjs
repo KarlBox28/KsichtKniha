@@ -38,15 +38,15 @@ export async function userDetailPosts(req, res) {
             CASE WHEN EXISTS (SELECT 1 FROM likes WHERE user_id = ? AND post_id = p.post_id) THEN 'liked' ELSE NULL END AS liked_by_me,
             'own'            AS relation
         FROM posts p
-        JOIN users u ON u.user_id = p.user_id
-        LEFT JOIN likes l     ON l.post_id = p.post_id
-        LEFT JOIN comments c  ON c.post_id = p.post_id
-        LEFT JOIN likes l_me  ON l_me.post_id = p.post_id AND l_me.user_id = ?
+                 JOIN users u ON u.user_id = p.user_id
+                 LEFT JOIN likes l     ON l.post_id = p.post_id
+                 LEFT JOIN comments c  ON c.post_id = p.post_id
+                 LEFT JOIN likes l_me  ON l_me.post_id = p.post_id AND l_me.user_id = ?
         WHERE p.user_id = ?
         GROUP BY p.post_id
- 
+
         UNION
- 
+
         SELECT
             p.post_id,
             p.title,
@@ -62,15 +62,15 @@ export async function userDetailPosts(req, res) {
             CASE WHEN EXISTS (SELECT 1 FROM likes WHERE user_id = ? AND post_id = p.post_id) THEN 'liked' ELSE NULL END AS liked_by_me,
             'liked'          AS relation
         FROM posts p
-        JOIN users u   ON u.user_id = p.user_id
-        JOIN likes ul  ON ul.post_id = p.post_id AND ul.user_id = ?
-        LEFT JOIN likes l     ON l.post_id = p.post_id
-        LEFT JOIN comments c  ON c.post_id = p.post_id
-        LEFT JOIN likes l_me  ON l_me.post_id = p.post_id AND l_me.user_id = ?
+                 JOIN users u   ON u.user_id = p.user_id
+                 JOIN likes ul  ON ul.post_id = p.post_id AND ul.user_id = ?
+                 LEFT JOIN likes l     ON l.post_id = p.post_id
+                 LEFT JOIN comments c  ON c.post_id = p.post_id
+                 LEFT JOIN likes l_me  ON l_me.post_id = p.post_id AND l_me.user_id = ?
         GROUP BY p.post_id
- 
+
         UNION
- 
+
         SELECT
             p.post_id,
             p.title,
@@ -86,13 +86,13 @@ export async function userDetailPosts(req, res) {
             CASE WHEN EXISTS (SELECT 1 FROM likes WHERE user_id = ? AND post_id = p.post_id) THEN 'liked' ELSE NULL END AS liked_by_me,
             'commented'      AS relation
         FROM posts p
-        JOIN users u    ON u.user_id = p.user_id
-        JOIN comments uc ON uc.post_id = p.post_id AND uc.user_id = ?
-        LEFT JOIN likes l     ON l.post_id = p.post_id
-        LEFT JOIN comments c  ON c.post_id = p.post_id
-        LEFT JOIN likes l_me  ON l_me.post_id = p.post_id AND l_me.user_id = ?
+                 JOIN users u    ON u.user_id = p.user_id
+                 JOIN comments uc ON uc.post_id = p.post_id AND uc.user_id = ?
+                 LEFT JOIN likes l     ON l.post_id = p.post_id
+                 LEFT JOIN comments c  ON c.post_id = p.post_id
+                 LEFT JOIN likes l_me  ON l_me.post_id = p.post_id AND l_me.user_id = ?
         GROUP BY p.post_id
- 
+
         ORDER BY created_at DESC
     `;
 
@@ -113,10 +113,10 @@ export async function userDetailPosts(req, res) {
 
 export async function editUserInfo(req, res) {
     let userId = req.user.id;
-    let db = await getPool(userId);
+    let db = await getPool();
     const { first_name, last_name, age, sex } = req.body;
     try {
-        await db.query("UPDATE users SET first_name = ?, last_name = ?, age = ?, sex = ?", [first_name, last_name, age, sex]);
+        await db.query("UPDATE users SET first_name = ?, last_name = ?, age = ?, sex = ? WHERE user_id = ?", [first_name, last_name, age, sex, userId]);
         let [user] = await db.query("SELECT user_id, username, first_name, last_name, age, sex, profile_image FROM users WHERE user_id = ?", [userId]);
         res.status(200).json(user[0]);
     } catch (error) {

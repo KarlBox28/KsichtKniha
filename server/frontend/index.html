@@ -21,6 +21,43 @@
 
 <div id="page"></div>
 
+<!-- EDIT PROFILE MODAL -->
+<div class="modal-overlay" id="profile-modal" style="display:none">
+    <div class="modal">
+        <div class="modal-title">Upravit profil</div>
+        <div class="profile-modal-avatar-wrap">
+            <img id="profile-modal-preview" class="profile-modal-avatar">
+            <label class="profile-modal-avatar-btn" title="Změnit profilovku">
+                📷
+                <input type="file" id="profile-modal-photo" accept="image/*" onchange="previewProfilePhoto(this)" style="display:none">
+            </label>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem">
+            <div class="form-group">
+                <label class="form-label">Jméno</label>
+                <input type="text" id="profile-modal-fname" placeholder="Jméno">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Příjmení</label>
+                <input type="text" id="profile-modal-lname" placeholder="Příjmení">
+            </div>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Pohlaví</label>
+            <select id="profile-modal-gender">
+                <option value="M">Muž</option>
+                <option value="F">Žena</option>
+                <option value="O">Jiné</option>
+            </select>
+        </div>
+        <div id="profile-modal-error" class="form-error" style="display:none"></div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="closeProfileModal()">Zrušit</button>
+            <button class="btn btn-primary" id="profile-modal-save-btn" onclick="saveProfile()">Uložit</button>
+        </div>
+    </div>
+</div>
+
 <!-- EDIT POST MODAL -->
 <div class="modal-overlay" id="edit-modal" style="display:none">
     <div class="modal">

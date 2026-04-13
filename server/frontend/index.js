@@ -53,8 +53,10 @@ function renderNavbar() {
         ? `<img class="nav-avatar" src="${API}/api/static/uploads/${currentUser.profile_image}">`
         : `<img class="nav-avatar" src="${API}/api/static/default.jpg">`;
     nu.innerHTML = `
-    ${avatarHtml}
-    <span class="nav-user-name">${currentUser?.first_name || ''} ${currentUser?.last_name || ''}</span>
+    <div class="nav-user-info" onclick="openProfileModal()" title="Upravit profil">
+      ${avatarHtml}
+      <span class="nav-user-name">${currentUser?.first_name || ''} ${currentUser?.last_name || ''}</span>
+    </div>
     <button class="btn-logout" onclick="logout()">Odhlásit</button>
   `;
 }
@@ -647,6 +649,66 @@ function switchUserTab(tab) {
     }
 
     container.innerHTML = posts.map(post => renderPostHTML(post)).join('');
+}
+
+// ─── PROFILE EDIT MODAL ──────────────────────────────────────
+function openProfileModal() {
+    const avatarSrc = currentUser?.profile_image
+        ? `${API}/api/static/uploads/${currentUser.profile_image}`
+        : `${API}/api/static/default.jpg`;
+    document.getElementById('profile-modal-preview').src = avatarSrc;
+    document.getElementById('profile-modal-fname').value  = currentUser?.first_name || '';
+    document.getElementById('profile-modal-lname').value  = currentUser?.last_name  || '';
+    document.getElementById('profile-modal-gender').value = currentUser?.sex || 'M';
+    document.getElementById('profile-modal-photo').value  = '';
+    document.getElementById('profile-modal-error').style.display = 'none';
+    document.getElementById('profile-modal').style.display = 'flex';
+}
+function closeProfileModal() {
+    document.getElementById('profile-modal').style.display = 'none';
+}
+function previewProfilePhoto(input) {
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = e => { document.getElementById('profile-modal-preview').src = e.target.result; };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+async function saveProfile() {
+    const fname  = document.getElementById('profile-modal-fname').value.trim();
+    const lname  = document.getElementById('profile-modal-lname').value.trim();
+    const gender = document.getElementById('profile-modal-gender').value;
+    const photo  = document.getElementById('profile-modal-photo').files[0];
+    const err    = document.getElementById('profile-modal-error');
+    const btn    = document.getElementById('profile-modal-save-btn');
+    err.style.display = 'none';
+    if (!fname || !lname) { showErr(err, 'Vyplň jméno a příjmení.'); return; }
+    btn.disabled = true;
+    btn.textContent = 'Ukládám…';
+    try {
+        const updated = await apiFetch('/api/user-info', {
+            method: 'POST', headers: authHeaders(),
+            body: JSON.stringify({ first_name: fname, last_name: lname, sex: gender, age: currentUser.age })
+        });
+        if (photo) {
+            const fd = new FormData();
+            fd.append('profile-image', photo);
+            const res = await fetch(API + '/api/upload-avatar', {
+                method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: fd
+            });
+            const avatarData = await res.json();
+            if (!res.ok) throw new Error(avatarData.error || 'Chyba nahrání obrázku');
+            updated.profile_image = avatarData.profile_image_url.replace('/api/static/uploads/', '');
+        }
+        setAuth(token, { ...currentUser, ...updated });
+        renderNavbar();
+        closeProfileModal();
+    } catch(e) {
+        showErr(err, e.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Uložit';
+    }
 }
 
 // ─── HELPERS ─────────────────────────────────────────────────
