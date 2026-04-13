@@ -14,7 +14,10 @@ import {upload} from "./middlewares/image.middleware.mjs";
 import * as UserController from "./controllers/user.controller.mjs";
 import * as PostController from "./controllers/post.controller.mjs";
 import jwt from "jsonwebtoken";
+import { mkdir } from "fs/promises";
 
+
+await mkdir("static/uploads", { recursive: true });
 ensureJwtSecret();
 getPool();
 
