@@ -167,4 +167,4 @@ The app is now running at [http://localhost:3000](http://localhost:3000).
 
 ## License
 
-This project was created as a school assignment. No license is applied.
+MIT License
